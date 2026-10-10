@@ -24,6 +24,7 @@ Localização de máximos e mínimos;
 Interpolação de valores;
 Geração de relatório executivo;
 Emissão de alertas de congestionamento;
+Funcionalidade de Interpolação no Sistema;
 Apoio à tomada de decisões gerenciais.
 1.2.2 Descrição do Produto
 
