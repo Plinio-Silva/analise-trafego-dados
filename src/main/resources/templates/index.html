@@ -197,6 +197,61 @@
                 </div>
             </div>
         </div>
+
+        <div class="card mb-4">
+            <div class="card-body p-4">
+                <h2 class="h4 fw-semibold mb-3">Interpolação</h2>
+                <form th:action="@{/interpolacao}" method="post" class="row g-3 align-items-end mb-4">
+                    <div class="col-md-6">
+                        <label for="horario" class="form-label fw-semibold">Horário desejado</label>
+                        <input id="horario" name="horario" type="text" class="form-control" placeholder="13:30:00" pattern="^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$" required>
+                    </div>
+                    <div class="col-md-3 d-grid">
+                        <button type="submit" class="btn btn-success btn-lg">Calcular</button>
+                    </div>
+                </form>
+
+                <div th:if="${interpolationError != null}" class="alert alert-warning mb-3" role="alert" th:text="${interpolationError}">
+                    Mensagem de erro.
+                </div>
+
+                <div th:if="${interpolationResult != null}">
+                    <div class="border rounded p-3 bg-light">
+                        <div class="mb-3">
+                            <h5 class="fw-semibold">Resultado</h5>
+                            <p class="mb-1"><strong>Horário consultado:</strong> <span th:text="${interpolationResult.horarioConsultado}">00:00:00</span></p>
+                            <p class="mb-1"><strong>Hora decimal:</strong> <span th:text="${#numbers.formatDecimal(interpolationResult.horaDecimal, 1, 4)}">0.0000</span></p>
+                            <p class="mb-1"><strong>Valor interpolado:</strong> <span th:text="${#numbers.formatDecimal(interpolationResult.valorInterpolado, 1, 2)} + ' Mbps'">0 Mbps</span></p>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <div class="border rounded p-3 bg-white h-100">
+                                    <h6 class="fw-bold">Ponto Inicial</h6>
+                                    <p class="mb-0" th:text="${#numbers.formatDecimal(interpolationResult.pontoInicialHora, 1, 2)} + 'h = ' + ${#numbers.formatDecimal(interpolationResult.pontoInicialValor, 1, 2)} + ' Mbps'">0h = 0 Mbps</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="border rounded p-3 bg-white h-100">
+                                    <h6 class="fw-bold">Ponto Final</h6>
+                                    <p class="mb-0" th:text="${#numbers.formatDecimal(interpolationResult.pontoFinalHora, 1, 2)} + 'h = ' + ${#numbers.formatDecimal(interpolationResult.pontoFinalValor, 1, 2)} + ' Mbps'">0h = 0 Mbps</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <h6 class="fw-bold">Fórmula</h6>
+                            <p class="mb-0 font-monospace bg-white border rounded p-2" th:text="${interpolationResult.formula}">T(t)=...</p>
+                        </div>
+
+                        <div>
+                            <h6 class="fw-bold">Resultado</h6>
+                            <p class="mb-0 fs-5 fw-semibold" th:text="${interpolationResult.resultadoFinal}">735 Mbps</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

@@ -1,5 +1,6 @@
 package com.analisetrafegodados.analisetrafegodados.service;
 
+import com.analisetrafegodados.analisetrafegodados.dto.InterpolationResultDto;
 import com.analisetrafegodados.analisetrafegodados.dto.TrafficAnalysisResult;
 import com.analisetrafegodados.analisetrafegodados.dto.TrafficRateDto;
 import com.analisetrafegodados.analisetrafegodados.model.TrafficPoint;
@@ -315,6 +316,122 @@ public class TrafficAnalysisService {
                 + String.format(Locale.US, "%.1f", peakTraffic) + " Mbps às " + peakHour + "h. "
                 + "A utilização máxima chegou a " + String.format(Locale.US, "%.1f", maxUtilization)
                 + "% da capacidade do link, indicando nível " + alertLevel + ".";
+    }
+
+    public InterpolationResultDto calculateInterpolation(String horario, List<TrafficPoint> points) {
+        if (horario == null || horario.isBlank()) {
+            throw new IllegalArgumentException("Informe um horário válido para consulta.");
+        }
+
+        List<TrafficPoint> ordered = points.stream()
+                .sorted(Comparator.comparingInt(TrafficPoint::getHour))
+                .toList();
+
+        double horaDecimal = parseHoraParaDecimal(horario);
+        double minHour = ordered.getFirst().getHour();
+        double maxHour = ordered.getLast().getHour();
+
+        if (horaDecimal < minHour || horaDecimal > maxHour) {
+            throw new IllegalArgumentException("Não é possível realizar interpolação para horários fora da faixa de dados coletados.");
+        }
+
+        TrafficPoint previous = null;
+        TrafficPoint next = null;
+
+        for (int i = 0; i < ordered.size(); i++) {
+            TrafficPoint current = ordered.get(i);
+            if (current.getHour() == horaDecimal) {
+                previous = i > 0 ? ordered.get(i - 1) : current;
+                next = i < ordered.size() - 1 ? ordered.get(i + 1) : current;
+                break;
+            }
+            if (current.getHour() < horaDecimal) {
+                previous = current;
+            }
+            if (current.getHour() > horaDecimal) {
+                next = current;
+                break;
+            }
+        }
+
+        if (previous == null && next == null) {
+            throw new IllegalArgumentException("Não foi possível localizar os pontos para interpolação.");
+        }
+
+        if (previous == null) {
+            previous = next;
+        }
+        if (next == null) {
+            next = previous;
+        }
+
+        if (previous.equals(next)) {
+            double exactValue = previous.getMbps();
+            String formula = "T(t) = T1 + ((T2 - T1)/(t2 - t1)) * (t - t1)";
+            return new InterpolationResultDto(
+                    horario,
+                    horaDecimal,
+                    exactValue,
+                    previous.getHour(),
+                    previous.getMbps(),
+                    next.getHour(),
+                    next.getMbps(),
+                    formula,
+                    String.format(Locale.US, "%.1f", exactValue) + " Mbps"
+            );
+        }
+
+        double t1 = previous.getHour();
+        double t2 = next.getHour();
+        double T1 = previous.getMbps();
+        double T2 = next.getMbps();
+        double interpolated = T1 + ((T2 - T1) / (t2 - t1)) * (horaDecimal - t1);
+
+        String formula = "T(t) = " + formatNumber(T1)
+                + " + (((" + formatNumber(T2) + " - " + formatNumber(T1) + ") / ("
+                + formatNumber(t2) + " - " + formatNumber(t1) + ")) * ("
+                + formatNumber(horaDecimal) + " - " + formatNumber(t1) + "))";
+
+        return new InterpolationResultDto(
+                horario,
+                horaDecimal,
+                interpolated,
+                t1,
+                T1,
+                t2,
+                T2,
+                formula,
+                String.format(Locale.US, "%.1f", interpolated) + " Mbps"
+        );
+    }
+
+    private double parseHoraParaDecimal(String horario) {
+        String normalized = horario.trim();
+        String[] pieces = normalized.split(":");
+        if (pieces.length < 2 || pieces.length > 3) {
+            throw new IllegalArgumentException("Formato de horário inválido. Use HH:mm:ss ou HH:mm.");
+        }
+
+        try {
+            int hour = Integer.parseInt(pieces[0]);
+            int minute = Integer.parseInt(pieces[1]);
+            int second = pieces.length == 3 ? Integer.parseInt(pieces[2]) : 0;
+
+            if (hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 || second > 59) {
+                throw new IllegalArgumentException("Horário fora do intervalo válido.");
+            }
+
+            return hour + (minute / 60.0) + (second / 3600.0);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Formato de horário inválido. Use HH:mm:ss ou HH:mm.");
+        }
+    }
+
+    private String formatNumber(double value) {
+        if (value == Math.rint(value)) {
+            return String.format(Locale.US, "%.0f", value);
+        }
+        return String.format(Locale.US, "%.4f", value).replaceAll("0+$", "").replaceAll("\\.$", "");
     }
 
     private String formatInterval(int startHour, int endHour, String direction) {
